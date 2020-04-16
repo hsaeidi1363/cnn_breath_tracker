@@ -1,0 +1,6 @@
+<launch>
+	<node pkg = "nn_labeler" type = "nn_labeler" name = "labeler" output = "screen">
+		<param name ="input_topic" value ="/see_scope/nir/image_raw"/>
+		<param name ="save_address" value ="/home/hsaeidi/nn_data_for_breathing_tracker/set2"/>
+	</node>
+</launch>
