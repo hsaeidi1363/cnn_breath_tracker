@@ -96,5 +96,5 @@ if __name__ == '__main__':
 			img_msg = CvBridge().cv2_to_imgmsg(image)
 			motion_pub.publish(img_msg)
 			#print(y)
-		
+#		rospy.spinOnce() #causing issues?
 		rate.sleep()

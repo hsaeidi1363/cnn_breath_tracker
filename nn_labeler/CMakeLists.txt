@@ -207,3 +207,5 @@ include_directories(
 add_executable(nn_labeler src/labeler.cpp)
 target_link_libraries(nn_labeler ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES} )
 
+add_executable(marker_patterns src/marker_patterns.cpp)
+target_link_libraries(marker_patterns ${catkin_LIBRARIES})

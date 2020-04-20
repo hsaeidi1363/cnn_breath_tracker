@@ -1,0 +1,6 @@
+<launch>
+	<node pkg = "nn_labeler" type = "marker_patterns" name = "labeler" output = "screen">
+		<param name ="set_no" value ="set_9"/>		
+		<param name ="save_address" value ="/home/hsaeidi/marker_patterns"/>
+	</node>
+</launch>
