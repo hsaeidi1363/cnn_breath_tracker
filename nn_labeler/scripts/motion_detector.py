@@ -4,6 +4,19 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 
 import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  try:
+    # Currently, memory growth needs to be the same across GPUs
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
+    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+  except RuntimeError as e:
+    # Memory growth must be set before GPUs have been initialized
+    print(e)
+
+
 from keras.models import Sequential
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -46,16 +59,18 @@ def get_image(ros_img):
 #TODO: make sure all the steps of preprocessing is done here! like the image size, pixel ranges and etc
 
 def pre_process():
+	#print "pre-process started"
 	global img_buff
 	global t_h
 	global t_h_1
-	x_d_all = img_buff[t_h_1]/float(255)
-	x_sum_all = x_d_all 
-	x_last2first = x_d_all - img_buff[0]/float(255)
+
+	x_sum_all = img_buff[t_h_1]/float(255) 
+	x_last2first = img_buff[t_h_1]/float(255) - img_buff[0]/float(255)
+
 	for i in range(0,t_h_1):
-		x_d_all -= img_buff[i]/float(255)
 		x_sum_all += img_buff[i]/float(255)
-	img_combined = cv.merge((x_d_all, x_last2first, x_sum_all))
+	img_combined = cv.merge((x_last2first, (x_sum_all-7)*2/float(t_h)))
+	#print "pre-process completed"
 	return img_combined
 
 if __name__ == '__main__':
@@ -63,8 +78,12 @@ if __name__ == '__main__':
 	rospy.init_node('motion_detector', anonymous = True)
 	img_sub = rospy.Subscriber("/see_scope/nir/image_raw", Image, get_image) 
 	motion_pub = rospy.Publisher('/see_scope/motion_out3', Image, queue_size = 1)
+	xd_pub = rospy.Publisher('/see_scope/xd', Image, queue_size = 1)
+	xlf_pub = rospy.Publisher('/see_scope/xlf', Image, queue_size = 1)
+	xs_pub = rospy.Publisher('/see_scope/xs', Image, queue_size = 1)
+
 	rate = rospy.Rate(7)
-	model = tf.keras.models.load_model('../saved_models/my_model')
+	model = tf.keras.models.load_model('../saved_models/reduced_model')
 	print('loaded the model')
 	model.summary()
 	font = cv.FONT_HERSHEY_SIMPLEX 
@@ -86,7 +105,7 @@ if __name__ == '__main__':
 		if img_ctr >= t_h:
 			#print('got enough images to start')
 			img_cnn = pre_process()
-			y = model.predict(img_cnn.reshape(1, 128, 128, 3), batch_size=1)
+			y = model.predict(img_cnn.reshape(1, 128, 128, 2), batch_size=1)
 			if y[0][0] > y[0][1]: 
 				str_msg = 'Moving'
 			else:
@@ -95,6 +114,30 @@ if __name__ == '__main__':
                    fontScale, color, thickness, cv.LINE_AA) 
 			img_msg = CvBridge().cv2_to_imgmsg(image)
 			motion_pub.publish(img_msg)
-			#print(y)
-#		rospy.spinOnce() #causing issues?
+
+			img_xlf = img_cnn[:,:,0] * 50
+			print('min , max for xlf before uint8')
+			print(np.amin(img_xlf))
+			print(np.amax(img_xlf))
+			img_xlf = img_xlf.astype(np.uint8)
+			print('min , max for xlf After uint8')
+			print(np.amin(img_xlf))
+			print(np.amax(img_xlf))
+			img_cnn_msg = CvBridge().cv2_to_imgmsg(img_xlf,encoding="mono8")
+			xlf_pub.publish(img_cnn_msg)
+
+
+			img_xs = img_cnn[:,:,1] * 50
+			print('min , max for xs before uint8')
+			print(np.amin(img_xs))
+			print(np.amax(img_xs))
+			img_xs = img_xs.astype(np.uint8)
+			print('min , max for xs After uint8')
+			print(np.amin(img_xs))
+			print(np.amax(img_xs))
+			img_cnn_msg = CvBridge().cv2_to_imgmsg(img_xs,encoding="mono8")
+			xs_pub.publish(img_cnn_msg)
 		rate.sleep()
+
+
+
