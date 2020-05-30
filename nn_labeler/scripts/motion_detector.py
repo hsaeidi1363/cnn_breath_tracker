@@ -2,6 +2,7 @@
 import rospy
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
+from std_msgs.msg import Bool
 
 import tensorflow as tf
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -81,6 +82,7 @@ if __name__ == '__main__':
 	xd_pub = rospy.Publisher('/see_scope/xd', Image, queue_size = 1)
 	xlf_pub = rospy.Publisher('/see_scope/xlf', Image, queue_size = 1)
 	xs_pub = rospy.Publisher('/see_scope/xs', Image, queue_size = 1)
+	moving_pub = rospy.Publisher('/suture/cnn_output', Bool, queue_size = 1)
 
 	rate = rospy.Rate(7)
 	model = tf.keras.models.load_model('../saved_models/reduced_model')
@@ -108,12 +110,15 @@ if __name__ == '__main__':
 			y = model.predict(img_cnn.reshape(1, 128, 128, 2), batch_size=1)
 			if y[0][0] > y[0][1]: 
 				str_msg = 'Moving'
+				tissue_moving = True 
 			else:
-				str_msg = 'Stopped'		
+				str_msg = 'Stopped'	
+				tissue_moving = False	
 			image = cv.putText(img_raw, str_msg, org, font,  
                    fontScale, color, thickness, cv.LINE_AA) 
 			img_msg = CvBridge().cv2_to_imgmsg(image)
 			motion_pub.publish(img_msg)
+			moving_pub.publish(tissue_moving)
 
 			img_xlf = img_cnn[:,:,0] * 50
 			print('min , max for xlf before uint8')
